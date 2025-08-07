@@ -61,9 +61,15 @@
                                     </label>
                                 </div>
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="formats" value="html" id="format_html" checked>
+                                    <input class="form-check-input" type="checkbox" name="formats" value="html" id="format_html">
                                     <label class="form-check-label" for="format_html">
-                                        HTML <small class="text-muted">(full HTML content)</small>
+                                        HTML <small class="text-muted">(processed HTML)</small>
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="formats" value="rawHtml" id="format_rawhtml">
+                                    <label class="form-check-label" for="format_rawhtml">
+                                        Raw HTML <small class="text-muted">(unprocessed HTML)</small>
                                     </label>
                                 </div>
                             </div>
@@ -79,6 +85,29 @@
                                     <label class="form-check-label" for="format_screenshot">
                                         Screenshot <small class="text-muted">(page screenshot)</small>
                                     </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="formats" value="json" id="format_json">
+                                    <label class="form-check-label" for="format_json">
+                                        JSON <small class="text-muted">(structured data extraction)</small>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- JSON Extraction Options (shown when JSON format is selected) -->
+                    <div class="mb-3" id="json-options" style="display: none;">
+                        <div class="card border-info">
+                            <div class="card-header bg-info text-white">
+                                <h6 class="mb-0">JSON Extraction Options</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="json_prompt" class="form-label">Extraction Prompt</label>
+                                    <textarea class="form-control" id="json_prompt" name="json_prompt" rows="3" 
+                                              placeholder="Example: Extract the product name, price, and description from the page"></textarea>
+                                    <div class="form-text">Describe what data you want to extract from each page</div>
                                 </div>
                             </div>
                         </div>
@@ -162,6 +191,36 @@ document.getElementById('file').addEventListener('change', function(e) {
             alert('File too large. Maximum size is 16MB.');
             e.target.value = '';
         }
+    }
+});
+
+// Show/hide JSON options based on format selection
+document.getElementById('format_json').addEventListener('change', function() {
+    const jsonOptions = document.getElementById('json-options');
+    if (this.checked) {
+        jsonOptions.style.display = 'block';
+    } else {
+        jsonOptions.style.display = 'none';
+    }
+});
+
+// Validate that at least one format is selected
+document.getElementById('uploadForm').addEventListener('submit', function(e) {
+    const formatCheckboxes = document.querySelectorAll('input[name="formats"]:checked');
+    if (formatCheckboxes.length === 0) {
+        e.preventDefault();
+        alert('Please select at least one output format.');
+        return false;
+    }
+    
+    // If JSON is selected, ensure prompt is provided
+    const jsonSelected = document.getElementById('format_json').checked;
+    const jsonPrompt = document.getElementById('json_prompt').value.trim();
+    if (jsonSelected && !jsonPrompt) {
+        e.preventDefault();
+        alert('Please provide an extraction prompt for JSON format.');
+        document.getElementById('json_prompt').focus();
+        return false;
     }
 });
 </script>

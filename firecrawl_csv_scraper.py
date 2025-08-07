@@ -31,7 +31,7 @@ import pandas as pd
 from dotenv import load_dotenv
 
 try:
-    from firecrawl import FirecrawlApp, ScrapeOptions
+    from firecrawl import FirecrawlApp
 except ImportError:
     print("Error: firecrawl-py not installed. Run: pip install firecrawl-py")
     sys.exit(1)
@@ -114,9 +114,8 @@ class FirecrawlCSVScraper:
         try:
             print(f"Scraping: {url}")
             
-            # Use Firecrawl to scrape the URL
-            scrape_options = ScrapeOptions(formats=formats)
-            result = self.app.scrape_url(url, scrape_options=scrape_options)
+            # Use Firecrawl to scrape the URL with correct v1 API parameters
+            result = self.app.scrape_url(url, formats=formats)
             
             processing_time = time.time() - start_time
             
@@ -131,6 +130,75 @@ class FirecrawlCSVScraper:
                     title=metadata.get('title'),
                     content=data.get('markdown'),
                     html=data.get('html'),
+                    scraped_at=scraped_at,
+                    processing_time=processing_time
+                )
+            else:
+                error_msg = result.get('error', 'Unknown error occurred')
+                return ScrapeResult(
+                    url=url,
+                    success=False,
+                    error=error_msg,
+                    scraped_at=scraped_at,
+                    processing_time=processing_time
+                )
+                
+        except Exception as e:
+            processing_time = time.time() - start_time
+            error_msg = str(e)
+            print(f"Error scraping {url}: {error_msg}")
+            
+            return ScrapeResult(
+                url=url,
+                success=False,
+                error=error_msg,
+                scraped_at=scraped_at,
+                processing_time=processing_time
+            )
+    
+    def scrape_url_advanced(self, url: str, params: Dict[str, Any]) -> ScrapeResult:
+        """
+        Advanced scrape with custom parameters for Firecrawl v1 API
+        
+        Args:
+            url: URL to scrape
+            params: Dictionary of Firecrawl API parameters
+            
+        Returns:
+            ScrapeResult object
+        """
+        start_time = time.time()
+        scraped_at = datetime.now().isoformat()
+        
+        try:
+            print(f"Scraping: {url}")
+            
+            # Use Firecrawl to scrape the URL with custom parameters
+            result = self.app.scrape_url(url, **params)
+            
+            processing_time = time.time() - start_time
+            
+            if result.get('success', False) and result.get('data'):
+                data = result['data']
+                metadata = data.get('metadata', {})
+                
+                # Handle different response formats
+                content = data.get('markdown', '')
+                html_content = data.get('html', '') or data.get('rawHtml', '')
+                
+                # Handle JSON extraction results
+                json_data = data.get('json', {})
+                if json_data and isinstance(json_data, dict):
+                    # Add JSON data to content
+                    content += f"\n\n---\nExtracted Data:\n{json.dumps(json_data, indent=2)}"
+                
+                return ScrapeResult(
+                    url=url,
+                    success=True,
+                    status_code=metadata.get('statusCode'),
+                    title=metadata.get('title'),
+                    content=content,
+                    html=html_content,
                     scraped_at=scraped_at,
                     processing_time=processing_time
                 )

@@ -46,7 +46,7 @@ def allowed_file(filename):
     """Check if file extension is allowed"""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def run_scraping_job(job_id, csv_file, url_column, formats, delay, max_retries, api_key):
+def run_scraping_job(job_id, csv_file, url_column, formats, delay, max_retries, api_key, json_prompt=""):
     """Background task to run the scraping job"""
     try:
         # Update job status
@@ -77,7 +77,14 @@ def run_scraping_job(job_id, csv_file, url_column, formats, delay, max_retries, 
             # Scrape URL with retries
             for attempt in range(max_retries + 1):
                 try:
-                    result = scraper.scrape_url(url, formats)
+                    # Prepare scraping parameters
+                    scrape_params = {'formats': formats}
+                    
+                    # Add JSON extraction if requested
+                    if 'json' in formats and json_prompt:
+                        scrape_params['json_options'] = {'prompt': json_prompt}
+                    
+                    result = scraper.scrape_url_advanced(url, scrape_params)
                     results.append(result)
                     break
                 except Exception as e:
@@ -159,9 +166,10 @@ def upload_file():
         
         # Get form parameters
         url_column = request.form.get('url_column', 'url')
-        formats = request.form.getlist('formats') or ['markdown', 'html']
+        formats = request.form.getlist('formats') or ['markdown']
         delay = float(request.form.get('delay', 1.0))
         max_retries = int(request.form.get('max_retries', 3))
+        json_prompt = request.form.get('json_prompt', '')
         
         # Validate CSV and column
         try:
@@ -186,7 +194,7 @@ def upload_file():
         # Start background scraping job
         thread = Thread(
             target=run_scraping_job,
-            args=(job_id, file_path, url_column, formats, delay, max_retries, api_key)
+            args=(job_id, file_path, url_column, formats, delay, max_retries, api_key, json_prompt)
         )
         thread.start()
         
