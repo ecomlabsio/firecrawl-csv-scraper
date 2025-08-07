@@ -118,6 +118,15 @@ def index():
     """Main page with upload form"""
     return render_template('index.html')
 
+@app.route('/health')
+def health_check():
+    """Health check endpoint for Railway"""
+    return jsonify({
+        'status': 'healthy',
+        'message': 'Firecrawl CSV Scraper is running',
+        'port': os.getenv('PORT', 5000)
+    })
+
 @app.route('/upload', methods=['POST'])
 def upload_file():
     """Handle file upload and start scraping job"""

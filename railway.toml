@@ -6,6 +6,7 @@ dockerfilePath = "Dockerfile"
 healthcheckPath = "/"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
+startCommand = "python app.py"
 
 [variables]
 NIXPACKS_NO_DEFAULT_CACHE_DIRECTORIES = "1"
