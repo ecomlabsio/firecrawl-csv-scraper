@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}Upload CSV - Firecrawl CSV Scraper{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">
+                    <i class="fas fa-upload me-2"></i>
+                    Upload CSV File for Scraping
+                </h4>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-4">
+                    Upload a CSV file containing URLs to scrape with Firecrawl.dev. 
+                    The file should have at least one column with URLs.
+                </p>
+
+                <form action="{{ url_for('upload_file') }}" method="post" enctype="multipart/form-data" id="uploadForm">
+                    <!-- File Upload -->
+                    <div class="mb-3">
+                        <label for="file" class="form-label">CSV File <span class="text-danger">*</span></label>
+                        <input type="file" class="form-control" id="file" name="file" accept=".csv,.txt" required>
+                        <div class="form-text">Maximum file size: 16MB. Accepted formats: CSV, TXT</div>
+                    </div>
+
+                    <!-- API Key -->
+                    <div class="mb-3">
+                        <label for="api_key" class="form-label">
+                            Firecrawl API Key 
+                            {% if not config.get('FIRECRAWL_API_KEY') %}
+                                <span class="text-danger">*</span>
+                            {% endif %}
+                        </label>
+                        <input type="password" class="form-control" id="api_key" name="api_key" 
+                               placeholder="{% if config.get('FIRECRAWL_API_KEY') %}Using environment variable{% else %}fc-your-api-key-here{% endif %}"
+                               {% if not config.get('FIRECRAWL_API_KEY') %}required{% endif %}>
+                        <div class="form-text">
+                            Get your API key from <a href="https://firecrawl.dev" target="_blank">firecrawl.dev</a>
+                        </div>
+                    </div>
+
+                    <!-- URL Column -->
+                    <div class="mb-3">
+                        <label for="url_column" class="form-label">URL Column Name</label>
+                        <input type="text" class="form-control" id="url_column" name="url_column" value="url" placeholder="url">
+                        <div class="form-text">Name of the CSV column containing URLs</div>
+                    </div>
+
+                    <!-- Output Formats -->
+                    <div class="mb-3">
+                        <label class="form-label">Output Formats</label>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="formats" value="markdown" id="format_markdown" checked>
+                                    <label class="form-check-label" for="format_markdown">
+                                        Markdown <small class="text-muted">(clean text content)</small>
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="formats" value="html" id="format_html" checked>
+                                    <label class="form-check-label" for="format_html">
+                                        HTML <small class="text-muted">(full HTML content)</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="formats" value="links" id="format_links">
+                                    <label class="form-check-label" for="format_links">
+                                        Links <small class="text-muted">(extracted links)</small>
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="formats" value="screenshot" id="format_screenshot">
+                                    <label class="form-check-label" for="format_screenshot">
+                                        Screenshot <small class="text-muted">(page screenshot)</small>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Advanced Settings -->
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <a class="text-decoration-none" data-bs-toggle="collapse" href="#advancedSettings" role="button" aria-expanded="false">
+                                <i class="fas fa-cog me-2"></i>
+                                Advanced Settings
+                                <i class="fas fa-chevron-down float-end mt-1"></i>
+                            </a>
+                        </div>
+                        <div class="collapse" id="advancedSettings">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <label for="delay" class="form-label">Delay Between Requests (seconds)</label>
+                                        <input type="number" class="form-control" id="delay" name="delay" value="1.0" min="0.1" max="10" step="0.1">
+                                        <div class="form-text">Prevents overwhelming target servers</div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="max_retries" class="form-label">Max Retries per URL</label>
+                                        <input type="number" class="form-control" id="max_retries" name="max_retries" value="3" min="0" max="10">
+                                        <div class="form-text">Number of retry attempts for failed URLs</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+                            <i class="fas fa-rocket me-2"></i>
+                            Start Scraping
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Example CSV Format -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    CSV Format Example
+                </h5>
+            </div>
+            <div class="card-body">
+                <p>Your CSV file should look like this:</p>
+                <pre class="bg-light p-3 rounded"><code>url,description
+https://example.com,Example website
+https://github.com,Code repository
+https://stackoverflow.com,Q&A site</code></pre>
+                <p class="mb-0 text-muted">
+                    <small>You can use any column name for URLs - just specify it in the "URL Column Name" field above.</small>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('uploadForm').addEventListener('submit', function() {
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Processing...';
+    submitBtn.disabled = true;
+});
+
+// File validation
+document.getElementById('file').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const maxSize = 16 * 1024 * 1024; // 16MB
+        if (file.size > maxSize) {
+            alert('File too large. Maximum size is 16MB.');
+            e.target.value = '';
+        }
+    }
+});
+</script>
+{% endblock %}

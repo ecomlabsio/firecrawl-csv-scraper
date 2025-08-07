@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+
+{% block title %}Job Status - Firecrawl CSV Scraper{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card shadow">
+            <div class="card-header bg-info text-white">
+                <h4 class="mb-0">
+                    <i class="fas fa-tasks me-2"></i>
+                    Scraping Job Status
+                </h4>
+            </div>
+            <div class="card-body">
+                <!-- Job Info -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h6 class="text-muted">Job ID</h6>
+                        <code>{{ job_id }}</code>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted">Status</h6>
+                        <span id="status-badge" class="badge bg-secondary">Loading...</span>
+                    </div>
+                </div>
+
+                <!-- Progress Bar -->
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0">Progress</h6>
+                        <small id="progress-text" class="text-muted">0%</small>
+                    </div>
+                    <div class="progress" style="height: 20px;">
+                        <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                             role="progressbar" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <!-- Current Status Message -->
+                <div class="alert alert-info" role="alert">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <span id="status-message">Initializing...</span>
+                </div>
+
+                <!-- Statistics -->
+                <div class="row text-center mb-4" id="stats-section" style="display: none;">
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body py-2">
+                                <h6 class="card-title mb-1">Total URLs</h6>
+                                <h4 class="text-primary mb-0" id="total-urls">0</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body py-2">
+                                <h6 class="card-title mb-1">Processed</h6>
+                                <h4 class="text-info mb-0" id="processed-urls">0</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body py-2">
+                                <h6 class="card-title mb-1">Successful</h6>
+                                <h4 class="text-success mb-0" id="successful-urls">-</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body py-2">
+                                <h6 class="card-title mb-1">Failed</h6>
+                                <h4 class="text-danger mb-0" id="failed-urls">-</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="text-center">
+                    <button id="download-btn" class="btn btn-success btn-lg me-2" style="display: none;" onclick="downloadResults()">
+                        <i class="fas fa-download me-2"></i>
+                        Download Results
+                    </button>
+                    <a href="{{ url_for('index') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-upload me-2"></i>
+                        Start New Job
+                    </a>
+                    <a href="{{ url_for('jobs_list') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-list me-2"></i>
+                        View All Jobs
+                    </a>
+                </div>
+
+                <!-- Real-time Log -->
+                <div class="card mt-4" id="log-section" style="display: none;">
+                    <div class="card-header">
+                        <h6 class="mb-0">
+                            <i class="fas fa-terminal me-2"></i>
+                            Live Progress Log
+                        </h6>
+                    </div>
+                    <div class="card-body p-0">
+                        <div id="log-container" class="bg-dark text-light p-3" style="height: 200px; overflow-y: auto; font-family: monospace; font-size: 12px;">
+                            <!-- Log entries will be added here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const jobId = '{{ job_id }}';
+let updateInterval;
+let logEntries = [];
+
+function updateJobStatus() {
+    fetch(`/api/job/${jobId}/status`)
+        .then(response => response.json())
+        .then(data => {
+            updateUI(data);
+        })
+        .catch(error => {
+            console.error('Error fetching job status:', error);
+            addLogEntry('ERROR: Failed to fetch job status');
+        });
+}
+
+function updateUI(data) {
+    // Update status badge
+    const statusBadge = document.getElementById('status-badge');
+    const statusClass = {
+        'queued': 'bg-secondary',
+        'running': 'bg-primary',
+        'completed': 'bg-success',
+        'error': 'bg-danger'
+    };
+    statusBadge.className = `badge ${statusClass[data.status] || 'bg-secondary'}`;
+    statusBadge.textContent = data.status.toUpperCase();
+
+    // Update progress
+    const progress = data.progress || 0;
+    document.getElementById('progress-bar').style.width = `${progress}%`;
+    document.getElementById('progress-text').textContent = `${progress}%`;
+
+    // Update message
+    document.getElementById('status-message').textContent = data.message || 'No status message';
+    
+    // Add to log
+    addLogEntry(`[${new Date().toLocaleTimeString()}] ${data.message}`);
+
+    // Update statistics
+    if (data.total_urls > 0) {
+        document.getElementById('stats-section').style.display = 'block';
+        document.getElementById('total-urls').textContent = data.total_urls;
+        document.getElementById('processed-urls').textContent = data.processed || 0;
+        
+        if (data.status === 'completed') {
+            document.getElementById('successful-urls').textContent = data.successful || 0;
+            document.getElementById('failed-urls').textContent = data.failed || 0;
+        }
+    }
+
+    // Show download button if completed
+    if (data.status === 'completed') {
+        document.getElementById('download-btn').style.display = 'inline-block';
+        document.getElementById('progress-bar').classList.remove('progress-bar-animated');
+        clearInterval(updateInterval);
+        addLogEntry('=== JOB COMPLETED ===');
+    } else if (data.status === 'error') {
+        document.getElementById('progress-bar').classList.remove('progress-bar-animated');
+        document.getElementById('progress-bar').classList.add('bg-danger');
+        clearInterval(updateInterval);
+        addLogEntry('=== JOB FAILED ===');
+    }
+
+    // Show log section when job is running
+    if (data.status === 'running' || data.status === 'completed' || data.status === 'error') {
+        document.getElementById('log-section').style.display = 'block';
+    }
+}
+
+function addLogEntry(message) {
+    if (logEntries[logEntries.length - 1] !== message) {
+        logEntries.push(message);
+        const logContainer = document.getElementById('log-container');
+        const logEntry = document.createElement('div');
+        logEntry.textContent = message;
+        logContainer.appendChild(logEntry);
+        logContainer.scrollTop = logContainer.scrollHeight;
+        
+        // Keep only last 50 log entries
+        if (logEntries.length > 50) {
+            logEntries.shift();
+            logContainer.removeChild(logContainer.firstChild);
+        }
+    }
+}
+
+function downloadResults() {
+    window.location.href = `/download/${jobId}`;
+}
+
+// Start polling for updates
+updateJobStatus();
+updateInterval = setInterval(updateJobStatus, 2000); // Update every 2 seconds
+
+// Stop polling when page is hidden
+document.addEventListener('visibilitychange', function() {
+    if (document.hidden) {
+        clearInterval(updateInterval);
+    } else {
+        updateJobStatus();
+        updateInterval = setInterval(updateJobStatus, 2000);
+    }
+});
+</script>
+{% endblock %}

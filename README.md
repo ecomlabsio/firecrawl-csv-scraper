@@ -1,9 +1,17 @@
 # Firecrawl CSV URL Scraper
 
-A production-grade Python tool for scraping websites from URLs listed in a CSV file using the Firecrawl.dev API.
+A production-grade web application for scraping websites from URLs listed in a CSV file using the Firecrawl.dev API. Features both a web interface and command-line tool.
 
 ## Features
 
+### 🌐 Web Interface
+- **Easy File Upload**: Drag-and-drop CSV file upload with validation
+- **Real-time Progress**: Live progress tracking with detailed statistics
+- **Job Management**: View all jobs and their status in a dashboard
+- **Results Download**: Download scraped data in JSON format
+- **Mobile Responsive**: Works perfectly on desktop and mobile devices
+
+### 🛠️ Core Functionality  
 - **CSV Input**: Read URLs from any CSV file with flexible column naming
 - **Firecrawl Integration**: Uses Firecrawl.dev for robust web scraping that bypasses blockers
 - **Multiple Output Formats**: Export results to JSON or CSV
@@ -27,7 +35,20 @@ A production-grade Python tool for scraping websites from URLs listed in a CSV f
 
 ## Usage
 
-### Basic Usage
+### 🌐 Web Interface (Recommended)
+
+1. **Start the web application**:
+   ```bash
+   python app.py
+   ```
+
+2. **Open your browser** to `http://localhost:5000`
+
+3. **Upload a CSV file** with URLs and configure scraping options
+
+4. **Monitor progress** in real-time and download results when complete
+
+### 📟 Command Line Interface
 
 ```bash
 python firecrawl_csv_scraper.py --input urls.csv --output results.json
