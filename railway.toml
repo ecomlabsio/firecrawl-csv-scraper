@@ -1,7 +1,11 @@
 [build]
 builder = "dockerfile"
+dockerfilePath = "Dockerfile"
 
 [deploy]
 healthcheckPath = "/"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
+
+[variables]
+NIXPACKS_NO_DEFAULT_CACHE_DIRECTORIES = "1"

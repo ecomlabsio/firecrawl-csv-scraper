@@ -1,0 +1,9 @@
+# Ignore files that might trigger nixpacks
+runtime.txt
+.python-version
+pyproject.toml
+poetry.lock
+Pipfile
+Pipfile.lock
+package.json
+yarn.lock
