@@ -85,6 +85,10 @@
                         <i class="fas fa-download me-2"></i>
                         Download Results
                     </button>
+                    <button id="cancel-btn" class="btn btn-danger btn-lg me-2" style="display: none;" onclick="cancelJob()">
+                        <i class="fas fa-stop me-2"></i>
+                        Cancel Job
+                    </button>
                     <a href="{{ url_for('index') }}" class="btn btn-outline-primary">
                         <i class="fas fa-upload me-2"></i>
                         Start New Job
@@ -140,6 +144,7 @@ function updateUI(data) {
         'queued': 'bg-secondary',
         'running': 'bg-primary',
         'completed': 'bg-success',
+        'cancelled': 'bg-warning',
         'error': 'bg-danger'
     };
     statusBadge.className = `badge ${statusClass[data.status] || 'bg-secondary'}`;
@@ -168,17 +173,29 @@ function updateUI(data) {
         }
     }
 
-    // Show download button if completed
+    // Show/hide action buttons based on status
     if (data.status === 'completed') {
         document.getElementById('download-btn').style.display = 'inline-block';
+        document.getElementById('cancel-btn').style.display = 'none';
         document.getElementById('progress-bar').classList.remove('progress-bar-animated');
         clearInterval(updateInterval);
         addLogEntry('=== JOB COMPLETED ===');
+    } else if (data.status === 'cancelled') {
+        document.getElementById('download-btn').style.display = data.successful > 0 ? 'inline-block' : 'none';
+        document.getElementById('cancel-btn').style.display = 'none';
+        document.getElementById('progress-bar').classList.remove('progress-bar-animated');
+        document.getElementById('progress-bar').classList.add('bg-warning');
+        clearInterval(updateInterval);
+        addLogEntry('=== JOB CANCELLED ===');
     } else if (data.status === 'error') {
+        document.getElementById('cancel-btn').style.display = 'none';
         document.getElementById('progress-bar').classList.remove('progress-bar-animated');
         document.getElementById('progress-bar').classList.add('bg-danger');
         clearInterval(updateInterval);
         addLogEntry('=== JOB FAILED ===');
+    } else if (data.status === 'running' || data.status === 'queued') {
+        document.getElementById('cancel-btn').style.display = 'inline-block';
+        document.getElementById('download-btn').style.display = 'none';
     }
 
     // Show log section when job is running
@@ -206,6 +223,43 @@ function addLogEntry(message) {
 
 function downloadResults() {
     window.location.href = `/download/${jobId}`;
+}
+
+function cancelJob() {
+    if (confirm('Are you sure you want to cancel this job? Any progress will be lost.')) {
+        const cancelBtn = document.getElementById('cancel-btn');
+        const originalContent = cancelBtn.innerHTML;
+        
+        // Show loading state
+        cancelBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Cancelling...';
+        cancelBtn.disabled = true;
+        
+        fetch(`/cancel/${jobId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                addLogEntry('=== USER CANCELLED JOB ===');
+                cancelBtn.style.display = 'none';
+                // Force a status update
+                updateJobStatus();
+            } else {
+                alert('Failed to cancel job: ' + (data.error || 'Unknown error'));
+                cancelBtn.innerHTML = originalContent;
+                cancelBtn.disabled = false;
+            }
+        })
+        .catch(error => {
+            console.error('Error cancelling job:', error);
+            alert('Failed to cancel job. Please try again.');
+            cancelBtn.innerHTML = originalContent;
+            cancelBtn.disabled = false;
+        });
+    }
 }
 
 // Start polling for updates

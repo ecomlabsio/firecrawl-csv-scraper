@@ -109,6 +109,11 @@
                                               placeholder="Example: Extract the product name, price, and description from the page"></textarea>
                                     <div class="form-text">Describe what data you want to extract from each page</div>
                                 </div>
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-clock me-2"></i>
+                                    <strong>Performance Note:</strong> JSON extraction uses AI processing and takes longer (~30-60s per URL). 
+                                    For faster results, use markdown format only.
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -127,14 +132,26 @@
                                 <div class="row">
                                     <div class="col-md-6">
                                         <label for="delay" class="form-label">Delay Between Requests (seconds)</label>
-                                        <input type="number" class="form-control" id="delay" name="delay" value="1.0" min="0.1" max="10" step="0.1">
-                                        <div class="form-text">Prevents overwhelming target servers</div>
+                                        <input type="number" class="form-control" id="delay" name="delay" value="0.5" min="0.1" max="10" step="0.1">
+                                        <div class="form-text">Prevents overwhelming target servers. Use 0.5s for faster processing.</div>
                                     </div>
                                     <div class="col-md-6">
                                         <label for="max_retries" class="form-label">Max Retries per URL</label>
-                                        <input type="number" class="form-control" id="max_retries" name="max_retries" value="3" min="0" max="10">
-                                        <div class="form-text">Number of retry attempts for failed URLs</div>
+                                        <input type="number" class="form-control" id="max_retries" name="max_retries" value="2" min="0" max="10">
+                                        <div class="form-text">Fewer retries = faster processing for large datasets</div>
                                     </div>
+                                </div>
+                                
+                                <!-- Performance Tips -->
+                                <div class="mt-3">
+                                    <h6 class="text-muted">⚡ Performance Tips:</h6>
+                                    <ul class="small text-muted">
+                                        <li><strong>Fastest:</strong> Markdown only (~5-10s per URL)</li>
+                                        <li><strong>Medium:</strong> Markdown + HTML (~10-20s per URL)</li>
+                                        <li><strong>Slowest:</strong> JSON extraction (~30-60s per URL)</li>
+                                        <li>Reduce delay to 0.5s and retries to 2 for speed</li>
+                                        <li>Large datasets (100+ URLs) may take 1-2 hours with JSON</li>
+                                    </ul>
                                 </div>
                             </div>
                         </div>

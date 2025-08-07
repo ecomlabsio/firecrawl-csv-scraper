@@ -112,7 +112,7 @@ class FirecrawlCSVScraper:
         scraped_at = datetime.now().isoformat()
         
         try:
-            print(f"Scraping: {url}")
+            print(f"🕸️  Scraping: {url}")
             
             # Use Firecrawl to scrape the URL with correct v1 API parameters
             result = self.app.scrape_url(url, formats=formats)
@@ -171,7 +171,7 @@ class FirecrawlCSVScraper:
         scraped_at = datetime.now().isoformat()
         
         try:
-            print(f"Scraping: {url}")
+            print(f"🕸️  Scraping: {url}")
             
             # Use Firecrawl to scrape the URL with custom parameters
             result = self.app.scrape_url(url, **params)

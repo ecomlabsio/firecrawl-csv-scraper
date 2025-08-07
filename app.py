@@ -67,14 +67,34 @@ def run_scraping_job(job_id, csv_file, url_column, formats, delay, max_retries, 
             return
         
         job_status[job_id]['message'] = f'Starting to scrape {len(urls)} URLs...'
+        job_status[job_id]['start_time'] = time.time()
         
         # Custom scraping with progress updates
         results = []
+        total_scrape_time = 0
+        
         for i, url in enumerate(urls, 1):
+            # Check if job was cancelled
+            if job_status[job_id].get('status') == 'cancelled':
+                print(f"🛑 Job {job_id} was cancelled by user")
+                job_status[job_id]['message'] = f'Job cancelled after processing {i-1}/{len(urls)} URLs'
+                return
+            
             job_status[job_id]['processed'] = i
-            job_status[job_id]['message'] = f'Scraping {i}/{len(urls)}: {url[:50]}...'
+            
+            # Calculate ETA
+            if i > 1:
+                elapsed = time.time() - job_status[job_id]['start_time']
+                avg_time_per_url = elapsed / (i - 1)
+                remaining_urls = len(urls) - i + 1
+                eta_seconds = remaining_urls * avg_time_per_url
+                eta_minutes = int(eta_seconds / 60)
+                job_status[job_id]['message'] = f'Scraping {i}/{len(urls)}: {url[:50]}... (ETA: {eta_minutes}m)'
+            else:
+                job_status[job_id]['message'] = f'Scraping {i}/{len(urls)}: {url[:50]}...'
             
             # Scrape URL with retries
+            url_start_time = time.time()
             for attempt in range(max_retries + 1):
                 try:
                     # Prepare scraping parameters
@@ -86,6 +106,41 @@ def run_scraping_job(job_id, csv_file, url_column, formats, delay, max_retries, 
                     
                     result = scraper.scrape_url_advanced(url, scrape_params)
                     results.append(result)
+                    
+                    # Track timing
+                    url_time = time.time() - url_start_time
+                    total_scrape_time += url_time
+                    
+                    # Show results in console
+                    if result.success:
+                        print(f"✅ SUCCESS ({url_time:.1f}s): {url}")
+                        if result.title:
+                            print(f"   📄 Title: {result.title}")
+                        
+                        # Show extracted JSON data if available
+                        if 'json' in formats and result.content and "---\nExtracted Data:" in result.content:
+                            try:
+                                json_part = result.content.split("---\nExtracted Data:\n")[1]
+                                extracted_data = json.loads(json_part)
+                                print(f"   🤖 Extracted: {json.dumps(extracted_data, indent=4)[:200]}...")
+                            except:
+                                print(f"   🤖 JSON extraction completed")
+                        
+                        # Show content preview for other formats
+                        elif result.content and len(result.content.strip()) > 0:
+                            preview = result.content.strip()[:150].replace('\n', ' ')
+                            print(f"   📝 Content: {preview}...")
+                        
+                        print()  # Empty line for readability
+                    else:
+                        print(f"❌ FAILED ({url_time:.1f}s): {url}")
+                        print(f"   ⚠️  Error: {result.error}")
+                        print()
+                    
+                    # Log slow URLs
+                    if url_time > 30:  # More than 30 seconds
+                        print(f"🐌 SLOW URL ({url_time:.1f}s): {url}")
+                    
                     break
                 except Exception as e:
                     if attempt < max_retries:
@@ -103,6 +158,10 @@ def run_scraping_job(job_id, csv_file, url_column, formats, delay, max_retries, 
             if i < len(urls):
                 time.sleep(delay)
         
+        # Check if job was cancelled before finishing
+        if job_status[job_id].get('status') == 'cancelled':
+            return
+            
         # Save results
         scraper.results = results
         output_file = os.path.join(RESULTS_FOLDER, f'{job_id}_results.json')
@@ -110,11 +169,16 @@ def run_scraping_job(job_id, csv_file, url_column, formats, delay, max_retries, 
         
         # Update final status
         successful = sum(1 for r in results if r.success)
+        total_time = time.time() - job_status[job_id]['start_time']
+        avg_time_per_url = total_time / len(results) if results else 0
+        
         job_status[job_id]['status'] = 'completed'
-        job_status[job_id]['message'] = f'Completed! {successful}/{len(results)} URLs scraped successfully'
+        job_status[job_id]['message'] = f'Completed! {successful}/{len(results)} URLs scraped successfully (avg: {avg_time_per_url:.1f}s per URL)'
         job_status[job_id]['results_file'] = output_file
         job_status[job_id]['successful'] = successful
         job_status[job_id]['failed'] = len(results) - successful
+        job_status[job_id]['total_time'] = total_time
+        job_status[job_id]['avg_time_per_url'] = avg_time_per_url
         
     except Exception as e:
         job_status[job_id]['status'] = 'error'
@@ -238,6 +302,24 @@ def job_status_api(job_id):
     
     return jsonify(status)
 
+@app.route('/cancel/<job_id>', methods=['POST'])
+def cancel_job(job_id):
+    """Cancel a running job"""
+    if not job_id or job_id not in job_status:
+        return jsonify({'error': 'Job not found'}), 404
+    
+    job = job_status[job_id]
+    if job['status'] in ['completed', 'error', 'cancelled']:
+        return jsonify({'error': 'Job cannot be cancelled'}), 400
+    
+    # Mark job as cancelled
+    job_status[job_id]['status'] = 'cancelled'
+    job_status[job_id]['message'] = 'Job cancelled by user'
+    
+    print(f"🛑 User cancelled job {job_id}")
+    
+    return jsonify({'success': True, 'message': 'Job cancelled successfully'})
+
 @app.route('/download/<job_id>')
 def download_results(job_id):
     """Download results file"""
@@ -246,7 +328,7 @@ def download_results(job_id):
         return redirect(url_for('index'))
     
     job = job_status[job_id]
-    if job['status'] != 'completed' or 'results_file' not in job:
+    if job['status'] not in ['completed', 'cancelled'] or 'results_file' not in job:
         flash('Results not available', 'error')
         return redirect(url_for('job_status_page', job_id=job_id))
     

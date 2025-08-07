@@ -93,6 +93,7 @@ function renderJobsTable(jobs) {
             'queued': 'bg-secondary',
             'running': 'bg-primary',
             'completed': 'bg-success',
+            'cancelled': 'bg-warning',
             'error': 'bg-danger'
         };
 
@@ -135,10 +136,15 @@ function renderJobsTable(jobs) {
                     <a href="/job/${job.job_id}" class="btn btn-outline-primary btn-sm" title="View Details">
                         <i class="fas fa-eye"></i>
                     </a>
-                    ${job.status === 'completed' ? `
+                    ${(job.status === 'completed' || job.status === 'cancelled') ? `
                         <a href="/download/${job.job_id}" class="btn btn-outline-success btn-sm" title="Download Results">
                             <i class="fas fa-download"></i>
                         </a>
+                    ` : ''}
+                    ${(job.status === 'running' || job.status === 'queued') ? `
+                        <button onclick="cancelJobFromList('${job.job_id}')" class="btn btn-outline-danger btn-sm" title="Cancel Job">
+                            <i class="fas fa-stop"></i>
+                        </button>
                     ` : ''}
                 </div>
             </td>
@@ -153,5 +159,29 @@ loadJobs();
 
 // Auto-refresh every 10 seconds
 setInterval(loadJobs, 10000);
+
+function cancelJobFromList(jobId) {
+    if (confirm('Are you sure you want to cancel this job?')) {
+        fetch(`/cancel/${jobId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Refresh the jobs list
+                loadJobs();
+            } else {
+                alert('Failed to cancel job: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error cancelling job:', error);
+            alert('Failed to cancel job. Please try again.');
+        });
+    }
+}
 </script>
 {% endblock %}
