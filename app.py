@@ -190,7 +190,7 @@ def upload_file():
         )
         thread.start()
         
-        return redirect(url_for('job_status', job_id=job_id))
+        return redirect(url_for('job_status_page', job_id=job_id))
         
     except RequestEntityTooLarge:
         flash('File too large. Maximum size is 16MB.', 'error')
@@ -199,10 +199,16 @@ def upload_file():
         flash(f'Error processing request: {str(e)}', 'error')
         return redirect(url_for('index'))
 
+@app.route('/job/')
+@app.route('/job')
+def job_redirect():
+    """Redirect to jobs list if no job_id provided"""
+    return redirect(url_for('jobs_list'))
+
 @app.route('/job/<job_id>')
 def job_status_page(job_id):
     """Job status page with real-time updates"""
-    if job_id not in job_status:
+    if not job_id or job_id not in job_status:
         flash('Job not found', 'error')
         return redirect(url_for('index'))
     
@@ -211,7 +217,7 @@ def job_status_page(job_id):
 @app.route('/api/job/<job_id>/status')
 def job_status_api(job_id):
     """API endpoint for job status updates"""
-    if job_id not in job_status:
+    if not job_id or job_id not in job_status:
         return jsonify({'error': 'Job not found'}), 404
     
     status = job_status[job_id].copy()
@@ -227,7 +233,7 @@ def job_status_api(job_id):
 @app.route('/download/<job_id>')
 def download_results(job_id):
     """Download results file"""
-    if job_id not in job_status:
+    if not job_id or job_id not in job_status:
         flash('Job not found', 'error')
         return redirect(url_for('index'))
     
