@@ -1,0 +1,6 @@
+url,description
+https://example.com,Example domain
+https://httpbin.org/,HTTP testing service
+https://jsonplaceholder.typicode.com/,Fake REST API for testing
+https://httpstat.us/200,HTTP status code testing
+https://www.firecrawl.dev,Firecrawl main website
