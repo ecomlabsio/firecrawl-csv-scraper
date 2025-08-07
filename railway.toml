@@ -1,14 +1,8 @@
 [build]
-builder = "nixpacks"
+builder = "dockerfile"
+dockerfilePath = "railway.dockerfile"
 
 [deploy]
 healthcheckPath = "/"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
-
-[[services]]
-name = "firecrawl-csv-scraper"
-
-[services.env]
-FIRECRAWL_API_KEY = { $env = "FIRECRAWL_API_KEY" }
-PORT = { $env = "PORT" }
